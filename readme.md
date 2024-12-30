@@ -1,5 +1,5 @@
 
-# Comment Importer Philomena
+# Comment Importer (Derpibooru => Tantabus)
 
 This project is a migration application designed to import comments from a nightly Philomena dump into a PostgreSQL and OpenSearch database.
 
