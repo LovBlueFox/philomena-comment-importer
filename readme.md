@@ -22,10 +22,10 @@ pg_restore -U postgres -O -d derpibooru "derpibooru_public_dump.pgdump"
 Now you can export the users and comments that match with a specific image tag to a CSV file using the following command:
 ```bash
 psql -U postgres -d derpibooru -c "COPY (SELECT * FROM public.users) TO STDOUT WITH CSV HEADER" > users-export.csv
-psql -U postgres -d derpibooru -c "COPY (SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924;) TO STDOUT WITH CSV HEADER" > comments-export.csv
+psql -U postgres -d derpibooru -c "COPY (SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924) TO STDOUT WITH CSV HEADER" > comments-export.csv
 ```
 
-Make sure to replace `it.tag_id = 661924` with the tag id you want to export the comments for, for example for tag `ai generated` use id `661924`
+Make sure to replace `it.tag_id = 661924` with the tag id you want to export the comments for, for example for tag `ai content` use id `661924`, for tag `ai geneated` use id `589483`.
 
 Once exported, you can use the CSV files to import the comments into the database, just place the CSV files in the root of the project and ensure the following environment variables are set:
 ```dotenv
@@ -108,12 +108,16 @@ If the opensearch uses SSL, you will need to update the index.js file to include
 
 The following environment variables can be set to change how the user is defined on the comments.
 ```dotenv
-PHILOMENA_ANONYMOUS=true # if user does not exist, should the user be set to anonymous instead of using the importer user below:
-PHILOMENA_IMPORTER_USER_ID=12 # if PHILOMENA_ANONYMOUS is false, and the user does not exist, the following user_id will be used instead. user_id 12 is the following account: [Tantabus Importer User](https://tantabus.ai/profiles/Importer)
+# if true, and the user does not exist, they will be set anonymous, otherwise it will use the IMPORTER user_id
+PHILOMENA_ANONYMOUS=true
+# if PHILOMENA_ANONYMOUS is false, and the user does not exist, the following user_id will be used instead.
+PHILOMENA_IMPORTER_USER_ID=12 # 12 is the tantabus importer user.
 
 # The following is used to add a suffix to the comment, to show where the comment was imported from.
-PHILOMENA_SUFFIX_DETAILS="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/) - Posted by **${user.name}**~" # this will be added to the end of the comment as a suffix if the user exists.
-PHILOMENA_SUFFIX_DETAILS_NOT_EXIST="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/)~" # this will be added to the end of the comment as a suffix if the user does not exist.
+# The following is the default suffix if the user exists.
+PHILOMENA_SUFFIX_DETAILS="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/) - Posted by **${user.name}**~"
+# The following is the default suffix if the user does NOT exist.
+PHILOMENA_SUFFIX_DETAILS_NOT_EXIST="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/)~"
 ```
 
 Here is a preview of the comment with the suffix:
@@ -121,12 +125,11 @@ Here is a preview of the comment with the suffix:
 
 And finally the following environment variables can be set to change how the importer works, shouldn't need to be changed unless you know what you are doing.
 ```dotenv
-PHILOMENA_IMPORT=true                       # if true, the comments will be imported to the database
-PHILOMENA_IMPORT_REPLACE=true               # if true, the comments will be replaced if they already exist using the PHILOMENA_IMPORT_ID_MAP file that will be created
-PHILOMENA_IMPORT_BATCH_LIMIT=100            # the number of comments to import at a time
-PHILOMENA_IMPORT_ID_MAP=import_id_map.json  # this is useful if you want to re-import the comments with new settings, or new users have registered to the site
+PHILOMENA_IMPORT=true # if true, the comments will be imported to the database
+PHILOMENA_IMPORT_BATCH_LIMIT=100 # the number of comments to import at a time
+PHILOMENA_IMPORT_REPLACE=true # if true, the comments will be replaced if they already exist.
+PHILOMENA_IMPORT_ID_MAP=import_id_map.json
 ```
-Sure, let's detail what happens in the `index.js` file during the import process in a more expansive manner:
 
 ## Explanation of the Import Process in `index.js`
 
