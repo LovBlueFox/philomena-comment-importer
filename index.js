@@ -562,26 +562,26 @@ async function csv2json(file, headings) {
     console.log(`Parsing CSV file: ${file}`);
     try {
         let data = readFileSync(file, 'utf8');
-        const lines = data.split('\n');
+        // const lines = data.split('\n');
 
         // Filter out lines with an odd number of double quotes greater than 3
-        const filteredLines = lines.filter(line => {
-            const columns = line.split(',');
-            let quoteCount = 0;
-            for (const column of columns) {
-                quoteCount += column.split('"').length - 1;
-            }
-            if (quoteCount % 2 !== 0) {
-                if (!line.endsWith('"') || line.endsWith(',"')) {
-                    return true;
-                }
-                console.log('REMOVED LINE: ', line);
-                return false;
-            }
-            return true;
-        });
+        // const filteredLines = lines.filter(line => {
+        //     const columns = line.split(',');
+        //     let quoteCount = 0;
+        //     // for (const column of columns) {
+        //     //     quoteCount += column.split('"').length - 1;
+        //     // }
+        //     // if (quoteCount % 2 !== 0) {
+        //     //     if (!line.endsWith('"') || line.endsWith(',"')) {
+        //     //         return true;
+        //     //     }
+        //     //     console.log('REMOVED LINE: ', line);
+        //     //     return false;
+        //     // }
+        //     return true;
+        // });
 
-        data = filteredLines.join('\n');
+        // data = filteredLines.join('\n');
 
         return await parseCSV(data, headings);
     } catch (error) {
@@ -598,7 +598,7 @@ async function parseCSV(records, headings, tries = {
             columns: true,
             skip_empty_lines: true,
             trim: true,
-            autoParse: true,
+            autoParse: true
         }).map(record => {
             const json = {};
             for (const key in headings) {

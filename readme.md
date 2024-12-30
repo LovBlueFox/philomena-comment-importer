@@ -19,13 +19,17 @@ createdb derpibooru
 pg_restore -U postgres -O -d derpibooru "derpibooru_public_dump.pgdump"
 ```
 
-Now you can export the users and comments that match with a specific image tag to a CSV file using the following command:
+Now you can export the users and comments that match with a specific image tag to a CSV file using the following query in pgAdmin 4:
 ```bash
-psql -U postgres -d derpibooru -c "COPY (SELECT * FROM public.users) TO STDOUT WITH CSV HEADER" > users-export.csv
-psql -U postgres -d derpibooru -c "COPY (SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924) TO STDOUT WITH CSV HEADER" > comments-export.csv
+SELECT id, name FROM public.users;
+```
+```bash
+SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924;
 ```
 
 Make sure to replace `it.tag_id = 661924` with the tag id you want to export the comments for, for example for tag `ai content` use id `661924`, for tag `ai geneated` use id `589483`.
+
+in pgAdmin 4 you can export the data to a CSV file by pressing F8 or clicking on the save results to file button.
 
 Once exported, you can use the CSV files to import the comments into the database, just place the CSV files in the root of the project and ensure the following environment variables are set:
 ```dotenv
