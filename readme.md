@@ -3,8 +3,10 @@
 
 This project is a migration application designed to import comments from a nightly Philomena dump into a PostgreSQL and OpenSearch database.
 
+
 ## Why It Was Needed
 This application was created to import comments from Derpibooru to Tantabus, due to the AI-generated images on Derpibooru being wiped on January 6th. Since all the images have already been imported, this application was developed to import the comments as well, due to somewhat popular demand. The application is capable of looking up users, finding the correct images to attach the comments to, and has the ability to map itself for future changes.
+
 
 ## How To Get The Data
 You can use the existing files in the root folder, which contains the already exported CSV data of the users and comments from the Derpibooru public dump as of 5th January 2024.
@@ -20,10 +22,10 @@ pg_restore -U postgres -O -d derpibooru "derpibooru_public_dump.pgdump"
 ```
 
 Now you can export the users and comments that match with a specific image tag to a CSV file using the following query in pgAdmin 4:
-```bash
+```postgresql
 SELECT id, name FROM public.users;
 ```
-```bash
+```postgresql
 SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924;
 ```
 
@@ -72,6 +74,7 @@ Well for testing it was easier to use the nightly dump, however if you prefer to
     ];
 ```
 
+
 ## Setting up the destination database
 The following ports needs to be open on the destination location for the migration application to work:
 ```yaml
@@ -92,6 +95,7 @@ DB_TABLE_IMAGES=images      # used to match the comments image_id to the image
 DB_TABLE_USERS=users        # used to match the comments user_id to the user
 ```
 
+
 ## Setting up the OpenSearch database
 The following ports needs to be open on the destination location for the migration application to work:
 ```yaml
@@ -107,6 +111,7 @@ OPENSEARCH_INDEX_COMMENT=comments   # used to index the new comments for searchi
 ```
 
 If the opensearch uses SSL, you will need to update the index.js file to include the SSL options on line 45.
+
 
 ## Additional Environment Variables
 
@@ -134,6 +139,7 @@ PHILOMENA_IMPORT_BATCH_LIMIT=100 # the number of comments to import at a time
 PHILOMENA_IMPORT_REPLACE=true # if true, the comments will be replaced if they already exist.
 PHILOMENA_IMPORT_ID_MAP=import_id_map.json
 ```
+
 
 ## Explanation of the Import Process in `index.js`
 
@@ -218,9 +224,16 @@ Finished & Database connection closed. Total time: 1:00:00
 If the script is executed again, it checks the `PHILOMENA_IMPORT_ID_MAP` file:
 - **Updating Instead of Inserting**: If the comment already exists (based on the import ID map), the script updates the comment instead of inserting it as new.
     
+
 ## Running the application
 To run the application, you can use the following command:
 ```bash
 npm install
 npm start
 ```
+
+## Watch a video of the import process in action
+
+https://www.youtube.com/watch?v=7uwOx6tWVVs
+
+[![Watch the video](https://img.youtube.com/vi/7uwOx6tWVVs/maxresdefault.jpg)](https://www.youtube.com/watch?v=7uwOx6tWVVs)
