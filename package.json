@@ -1,0 +1,15 @@
+{
+    "name": "comment-importer",
+    "version": "1.0.0",
+    "description": "Comment Importer for Philomena",
+    "main": "index.js",
+    "type": "module",
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@opensearch-project/opensearch": "^2.13.0",
+        "csv-parse": "^5.6.0",
+        "dotenv": "^16.4.7",
+        "pg": "^8.13.1"
+    }
+}
