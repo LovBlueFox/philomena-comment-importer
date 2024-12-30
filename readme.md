@@ -5,11 +5,11 @@ This project is a migration application designed to import comments from a night
 
 
 ## Why It Was Needed
-This application was created to import comments from Derpibooru to Tantabus, due to the AI-generated images on Derpibooru being wiped on January 6th. Since all the images have already been imported, this application was developed to import the comments as well, due to somewhat popular demand. The application is capable of looking up users, finding the correct images to attach the comments to, and has the ability to map itself for future changes.
+This application was created to import comments from Derpibooru to Tantabus, due to the AI-generated images on Derpibooru being wiped on 6th of January 2025. Since all the images have already been imported, this application was developed to import the comments as well, due to somewhat popular demand. The application is capable of looking up users, finding the correct images to attach the comments to, and has the ability to map itself for future changes.
 
 
 ## How To Get The Data
-You can use the existing files in the root folder, which contains the already exported CSV data of the users and comments from the Derpibooru public dump as of 5th January 2024.
+You can use the existing files in the root folder, which contains the already exported CSV data of the users and comments from the Derpibooru public dump as of 31st December 2024.
 
 ### [Optional] Getting the data from the Derpibooru public dump
 The data can be obtained from the https://derpibooru.org/pages/data_dumps page. The data is updated nightly, and the comments are stored in a CSV file.
