@@ -12,9 +12,9 @@ This application was created to import comments from Derpibooru to Tantabus, due
 You can use the existing files in the root folder, which contains the already exported CSV data of the users and comments from the Derpibooru public dump as of 31st December 2024.
 
 ### [Optional] Getting the data from the Derpibooru public dump
-The data can be obtained from the https://derpibooru.org/pages/data_dumps page. The data is updated nightly, and the comments are stored in a CSV file.
+The data can be obtained from the https://derpibooru.org/pages/data_dumps page. The data is updated nightly, and the comments are stored in a pgdump file.
 
-From there you can import the pgdump file into a PostgresSQL database using the following command:
+From there you can import the file into a PostgreSQL database using the following command:
 ```bash
 dropdb --if-exists derpibooru
 createdb derpibooru
@@ -29,21 +29,25 @@ SELECT id, name FROM public.users;
 SELECT c.* FROM public.comments c JOIN public.image_taggings it ON c.image_id = it.image_id WHERE it.tag_id = 661924;
 ```
 
-Make sure to replace `it.tag_id = 661924` with the tag id you want to export the comments for, for example for tag `ai content` use id `661924`, for tag `ai geneated` use id `589483`.
+Make sure to replace `it.tag_id = 661924` with the tag id you want to export the comments for; for example:
+ - tag `ai content` is tag id: `661924`
+ - tag `ai geneated` is tag id `589483`.
 
-in pgAdmin 4 you can export the data to a CSV file by pressing F8 or clicking on the save results to file button.
+In pgAdmin 4 you can export the data to a CSV file by pressing F8 or clicking the 'save results to file' button.
 
-Once exported, you can use the CSV files to import the comments into the database, just place the CSV files in the root of the project and ensure the following environment variables are set:
+Once exported, you can use the CSV files to import the comments into the database, place the CSV files in the root of the project and ensure the following .env variables are set:
 ```dotenv
 CSV_USERS='users-export.csv'
 CSV_COMMENTS='comments-export.csv'
 ```
 
 #### Why CSV and not JSON or a direct connection?
-Due to not knowing how Derpibooru and Tantabus are hosted, or if they can communicate with each other, i've decided to use CSV files as a middleman to ensure the data can be imported. There is methods of exporting as JSON, but i've already had a system in place to import with CSV, so i've decided to use that.
+Due to not knowing how Derpibooru and Tantabus are hosted or if they can communicate with each other, I've decided to use CSV files as a middleman to ensure the data can be imported. There are methods of exporting as JSON, but they're a bit sketchy. Besides, I've already had a system to import with CSV, so I've decided to use that.
 
-#### Why get the data from the nightly dump and not directly from the database?
-Well for testing it was easier to use the nightly dump, however if you prefer to use the database export, you can update the index.js code on line 60, to match the database the proper csv_column header.
+#### Why get the data from the nightly dump, not the database?
+Well, for testing, the nightly dump was easier; however, if you prefer to use the database export, you can update the index.js code on line 60 and the csv_column variables.
+
+FYI I did not test whether this would work, and i can already see issues doing this method with how the code matches and changes the body of the comments.
 ```javascript
     let comment_structure = [
         {
@@ -76,7 +80,7 @@ Well for testing it was easier to use the nightly dump, however if you prefer to
 
 
 ## Setting up the destination database
-The following ports needs to be open on the destination location for the migration application to work:
+The following ports need to be open on the destination location (Tantabus) for the migration application to work, which can be done on the docker file and some direct access to the service:
 ```yaml
   postgres:
     ports:
@@ -97,7 +101,7 @@ DB_TABLE_USERS=users        # used to match the comments user_id to the user
 
 
 ## Setting up the OpenSearch database
-The following ports needs to be open on the destination location for the migration application to work:
+The following ports need to be open on the destination location (tantabus) for the migration application to work, which can be done on the docker file and some direct access to the service:
 ```yaml
   opensearch:
     ports:
@@ -110,33 +114,33 @@ OPENSEARCH_NODE=http://localhost:9200
 OPENSEARCH_INDEX_COMMENT=comments   # used to index the new comments for searching and to show up on the user profile (if the user exists)
 ```
 
-If the opensearch uses SSL, you will need to update the index.js file to include the SSL options on line 45.
+If OpenSearch uses SSL, update the index.js file to include the SSL options on line 45.
 
 
 ## Additional Environment Variables
 
-The following environment variables can be set to change how the user is defined on the comments.
+The following environment variables can be set to change how the user is defined in the comments.
 ```dotenv
-# if true, and the user does not exist, they will be set anonymous, otherwise it will use the IMPORTER user_id
+## if true, and the user does not exist, they will be set anonymous otherwise, it will use the IMPORTER user_id
 PHILOMENA_ANONYMOUS=true
-# if PHILOMENA_ANONYMOUS is false, and the user does not exist, the following user_id will be used instead.
+## If PHILOMENA_ANONYMOUS is false, and the user does not exist, the following user_id will be used instead.
 PHILOMENA_IMPORTER_USER_ID=12 # 12 is the tantabus importer user.
 
-# The following is used to add a suffix to the comment, to show where the comment was imported from.
-# The following is the default suffix if the user exists.
+# The following adds a suffix to the comment to show where the comment was imported from.
+## The following is the default suffix if the user exists.
 PHILOMENA_SUFFIX_DETAILS="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/) - Posted by **${user.name}**~"
-# The following is the default suffix if the user does NOT exist.
+## The following is the default suffix if the user does NOT exist.
 PHILOMENA_SUFFIX_DETAILS_NOT_EXIST="\n\n---\n~Imported from [Derpibooru](https://derpibooru.org/)~"
 ```
 
 Here is a preview of the comment with the suffix:
 <img src="./doc/Comment Suffix Preview.png">
 
-And finally the following environment variables can be set to change how the importer works, shouldn't need to be changed unless you know what you are doing.
+Finally, the following environment variables can be set to change how the importer works; they shouldn't need to be changed unless you know what you are doing.
 ```dotenv
-PHILOMENA_IMPORT=true # if true, the comments will be imported to the database
+PHILOMENA_IMPORT=true # If true, the comments will be imported into the database.
 PHILOMENA_IMPORT_BATCH_LIMIT=100 # the number of comments to import at a time
-PHILOMENA_IMPORT_REPLACE=true # if true, the comments will be replaced if they already exist.
+PHILOMENA_IMPORT_REPLACE=true # If true, the comments will be replaced if they already exist.
 PHILOMENA_IMPORT_ID_MAP=import_id_map.json
 ```
 
@@ -145,7 +149,7 @@ PHILOMENA_IMPORT_ID_MAP=import_id_map.json
 
 ### 1. Establishing Database Connection
 The script initiates a connection to the PostgreSQL database:
-- **Logging Connection Status**: The connection status is logged to ensure that the database is accessible.
+- **Logging Connection Status**: The connection status is logged to ensure the database is accessible.
 - **Checking Required Tables**: It verifies the existence of necessary tables (`images`, `comments`, `users`). If any table is missing, the script exits with an error.
 - **Fetching Data**: The image and user data are retrieved from the database and stored in `imagesDB` and `usersDB`. This data is used later to map comments correctly during the import process.
 ```log
@@ -167,9 +171,9 @@ Index 'comments' found in OpenSearch
 ### 3. Defining Comment Structure and Reading CSV Files
 The script defines the structure for comments:
 - **Structure Definition**: The comment structure includes data types and callbacks for processing specific fields.
-- **Reading CSV Files**: The script reads and parses the CSV files for comments and users, converting the data into JSON format. This step may take up to 15 minutes, depending on the size of the CSV files.
-- **Mapping CSV to Database Columns**: The script maps the CSV columns to the corresponding database columns based on the comment structure definition.
-- **Processing Comments**: It processes each comment, applying necessary transformations and handling any errors that occur during this phase.
+- **Reading CSV Files**: The script reads and parses the CSV files for comments and users, converting the data into JSON format. Depending on the size of the CSV files, this step may take up to 15 minutes.
+- **Mapping CSV to Database Columns**: The script maps the CSV columns to the corresponding database columns based on the definition of the comment structure.
+- **Processing Comments**: It processes each comment, applying necessary transformations and handling any errors during this phase.
 ```log
 ----------------------------------------
 Parsing CSV file: comments-export.csv
@@ -185,11 +189,11 @@ Total Comments Processed: 50,000
 
 ### 4. Importing Comments
 If importing is enabled (`PHILOMENA_IMPORT=true`):
-- **Batch Processing**: The comments are inserted or updated in the PostgreSQL database and indexed in OpenSearch. This can take up to an hour, depending on the size of the data:.
+- **Batch Processing**: The comments are inserted or updated in the PostgreSQL database and indexed in OpenSearch. Depending on the size of the data, this can take up to an hour.
 - **Batch Insertion**: Comments are inserted in batches to optimise performance.
-    - **User Statistics Adjustment**: User statistics and comment counts for images are updated.
+    - **User Statistics Adjustment**: User statistics and image comment counts are updated.
     - **Saving Import ID Map**: An import ID map is saved for future reference, ensuring duplicate comments are not re-imported.
-- **Logging Details**: Detailed logs of the processing are maintained throughout.
+- **Logging Details**: Detailed processing logs are maintained throughout.
 ```log
 ----------------------------------------
 Starting Database Import
