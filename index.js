@@ -224,6 +224,10 @@ async function processUserId(record, user_id) {
         record.anonymous = true;
     }
 
+    if (process.env.PHILOMENA_ANONYMOUS_BLANK_USER !== 'false') {
+        user_id = null;
+    }
+
     if (process.env.PHILOMENA_IMPORTER_FORCE !== 'false') {
         user_id = parseInt(process.env.PHILOMENA_IMPORTER_USER_ID);
     }
