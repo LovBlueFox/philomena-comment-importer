@@ -94,6 +94,9 @@ async function start() {
 
     importComments.sort((a, b) => a.id - b.id);
 
+    // NEW - Remove deleted comments
+    importComments = importComments.filter(comment => !comment.deleted_by_id);
+
     importUsers = await csv2json(process.env.CSV_USERS, {
         id: "integer",
         name: "varchar"
@@ -352,6 +355,7 @@ async function importData(comments) {
             //     comment.body = comment.body.replace(/@\w+]\(\/images\/\d+#comment_\d+\)/, `@Background Pony #${hash.toUpperCase()}](/images/${commentRef.image_id}#comment_${commentRef.id})`);
             // }
 
+            // NEW - Process comment references in the body
             if (comment.body.includes('#comment_')) {
                 const referenceMatches = [...comment.body.matchAll(/\[(.+)\]\(\/images\/\d+#comment_(\d+)\)/g)];
 
