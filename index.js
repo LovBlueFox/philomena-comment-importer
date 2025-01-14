@@ -3,6 +3,7 @@ import {parse} from "csv-parse/sync";
 import postgres from "pg";
 import dotenv from "dotenv";
 import {Client} from '@opensearch-project/opensearch';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -64,25 +65,25 @@ async function start() {
                 return [record, id];
             }
         },
-        {type: 'varchar',   csv_column: null,           db_column: 'body_textile',      DEFAULT: ""},
-        {type: 'inet',      csv_column: null,           db_column: 'ip',                DEFAULT: null},
-        {type: 'varchar',   csv_column: null,           db_column: 'fingerprint',       DEFAULT: null},
-        {type: 'varchar',   csv_column: null,           db_column: 'user_agent',        DEFAULT: ""},
-        {type: 'varchar',   csv_column: null,           db_column: 'referrer',          DEFAULT: ""},
-        {type: 'boolean',   csv_column: null,           db_column: 'anonymous',         DEFAULT: false},
-        {type: 'boolean',   csv_column: null,           db_column: 'hidden_from_users', DEFAULT: false},
-        {type: 'integer',   csv_column: 'user_id',      db_column: 'user_id',           CALLBACK: processUserId},
-        {type: 'integer',   csv_column: null,           db_column: 'deleted_by_id',     DEFAULT: null},
-        {type: 'integer',   csv_column: 'image_id',     db_column: 'image_id',          CALLBACK: processImageId},
-        {type: 'timestamp', csv_column: 'created_at',   db_column: 'created_at'},
-        {type: 'timestamp', csv_column: 'updated_at',   db_column: 'updated_at'},
-        {type: 'varchar',   csv_column: null,           db_column: 'edit_reason',       DEFAULT: null},
-        {type: 'timestamp', csv_column: null,           db_column: 'edited_at',         DEFAULT: null},
-        {type: 'varchar',   csv_column: null,           db_column: 'deletion_reason',   DEFAULT: ""},
-        {type: 'boolean',   csv_column: null,           db_column: 'destroyed_content', DEFAULT: false},
-        {type: 'varchar',   csv_column: null,           db_column: 'name_at_post_time', DEFAULT: null},
-        {type: 'string',    csv_column: 'body',         db_column: 'body',              CALLBACK: processBody},
-        {type: 'boolean',   csv_column: null,           db_column: 'approved',          DEFAULT: true},
+        {type: 'varchar', csv_column: null, db_column: 'body_textile', DEFAULT: ""},
+        {type: 'inet', csv_column: null, db_column: 'ip', DEFAULT: null},
+        {type: 'varchar', csv_column: null, db_column: 'fingerprint', DEFAULT: null},
+        {type: 'varchar', csv_column: null, db_column: 'user_agent', DEFAULT: ""},
+        {type: 'varchar', csv_column: null, db_column: 'referrer', DEFAULT: ""},
+        {type: 'boolean', csv_column: null, db_column: 'anonymous', DEFAULT: false},
+        {type: 'boolean', csv_column: null, db_column: 'hidden_from_users', DEFAULT: false},
+        {type: 'integer', csv_column: 'user_id', db_column: 'user_id', CALLBACK: processUserId},
+        {type: 'integer', csv_column: null, db_column: 'deleted_by_id', DEFAULT: null},
+        {type: 'integer', csv_column: 'image_id', db_column: 'image_id', CALLBACK: processImageId},
+        {type: 'timestamp', csv_column: 'created_at', db_column: 'created_at'},
+        {type: 'timestamp', csv_column: 'updated_at', db_column: 'updated_at'},
+        {type: 'varchar', csv_column: null, db_column: 'edit_reason', DEFAULT: null},
+        {type: 'timestamp', csv_column: null, db_column: 'edited_at', DEFAULT: null},
+        {type: 'varchar', csv_column: null, db_column: 'deletion_reason', DEFAULT: ""},
+        {type: 'boolean', csv_column: null, db_column: 'destroyed_content', DEFAULT: false},
+        {type: 'varchar', csv_column: null, db_column: 'name_at_post_time', DEFAULT: null},
+        {type: 'string', csv_column: 'body', db_column: 'body', CALLBACK: processBody},
+        {type: 'boolean', csv_column: null, db_column: 'approved', DEFAULT: true},
     ];
 
     importComments = await csv2json(process.env.CSV_COMMENTS, comment_structure.reduce((acc, heading) => {
@@ -148,7 +149,6 @@ async function start() {
 
             processedComments.push(...processedBatch);
         }
-        // process.exit(1)
 
         console.clear();
         console.log('----------------------------------------');
@@ -188,8 +188,6 @@ start()
             .catch(error => console.error("Error closing the database connection:", error));
     });
 
-/* CALLBACKS */
-
 async function processUserId(record, user_id) {
     const user = usersDB.rows.find(user => user.name === importUsers[user_id]);
     record.old_user_id = user_id;
@@ -208,6 +206,7 @@ async function processUserId(record, user_id) {
         if (process.env.PHILOMENA_ANONYMOUS !== 'false') {
             record.anonymous = true;
         }
+
         if (record.anonymous) {
             user_id = null;
         } else {
@@ -218,10 +217,18 @@ async function processUserId(record, user_id) {
         record.anonymous = false;
     }
 
+    if (process.env.PHILOMENA_ANONYMOUS_FORCE !== 'false') {
+        record.anonymous = true;
+    }
+
+    if (process.env.PHILOMENA_IMPORTER_FORCE !== 'false') {
+        user_id = parseInt(process.env.PHILOMENA_IMPORTER_USER_ID);
+    }
+
     return [record, user_id];
 }
 
-function getUserName(user_id) {
+function getUserName(user_id, bypass = false) {
     const user = usersDB.rows.find(user => user.name === importUsers[user_id]);
     let anonymous = false;
     if (!user) {
@@ -229,6 +236,9 @@ function getUserName(user_id) {
             anonymous = true;
         }
         if (anonymous) {
+            if (bypass) {
+                return user.name;
+            }
             return 'Anonymous';
         } else {
             return 'Importer';
@@ -271,8 +281,6 @@ function processBody(record, body) {
     return [record, body + suffix];
 }
 
-/* FUNCTIONS */
-
 async function importData(comments) {
     console.clear();
 
@@ -283,7 +291,6 @@ async function importData(comments) {
     }
 
     const batchSize = parseInt(process.env.PHILOMENA_IMPORT_BATCH_LIMIT);
-
 
     let insertBatches = [];
     let updateBatches = [];
@@ -296,9 +303,7 @@ async function importData(comments) {
                                        FROM ${process.env.DB_TABLE_COMMENTS}
                                        ORDER BY id DESC LIMIT 1`);
     lastId = lastId.rows[0]?.id ?? 0;
-
     console.log('Last ID:', lastId);
-
     await database.query(`ALTER SEQUENCE ${process.env.DB_TABLE_COMMENTS}_id_seq RESTART WITH ${lastId + comments.length + 1}`);
 
     for (const comment of comments) {
@@ -339,10 +344,39 @@ async function importData(comments) {
                 }
             }
 
-            if (comment.body.includes('comment_')) {
-                const reference_id = comment.body.match(/comment_(\d+)/)[1];
-                const commentRef = comments.find(comment => comment.old_id === parseInt(reference_id));
-                comment.body = comment.body.replace(`comment_${reference_id}`, `comment_${commentRef.id}`);
+            // if (comment.body.includes('comment_')) {
+            //     const reference_id = comment.body.match(/comment_(\d+)/)[1];
+            //     const commentRef = comments.find(comment => comment.old_id === parseInt(reference_id));
+            //     // comment.body = comment.body.replace(`comment_${reference_id}`, `comment_${commentRef.id}`);
+            //     let hash = getAnonymousHash(commentRef.image_id, commentRef.user_id || commentRef.fingerprint);
+            //     comment.body = comment.body.replace(/@\w+]\(\/images\/\d+#comment_\d+\)/, `@Background Pony #${hash.toUpperCase()}](/images/${commentRef.image_id}#comment_${commentRef.id})`);
+            // }
+
+            if (comment.body.includes('#comment_')) {
+                const referenceMatches = [...comment.body.matchAll(/\[(.+)\]\(\/images\/\d+#comment_(\d+)\)/g)];
+
+                if (referenceMatches.length > 1) {
+                    console.log(' - COMMENT ID:', comment.id, 'HAS MULTIPLE REFERENCES', comment.image_id);
+                }
+
+                for (const match of referenceMatches) {
+                    const [fullMatch, text, reference_id] = match;
+                    if (text.startsWith('@')) {
+                        const commentRef = comments.find(comment => comment.old_id === parseInt(reference_id));
+                        if (commentRef) {
+                            let replyTo = ''
+                            if (commentRef.anonymous) {
+                                const hash = getAnonymousHash(commentRef.image_id, commentRef.user_id || commentRef.fingerprint);
+                                replyTo = `@Background Pony #${hash.toUpperCase()}`;
+                            } else {
+                                replyTo = `@${getUserName(commentRef.user_id, true)}`;
+                            }
+                            const newLink = `/images/${commentRef.image_id}#comment_${commentRef.id}`;
+                            const newMatch = `[${replyTo}](${newLink})`;
+                            comment.body = comment.body.replace(fullMatch, newMatch);
+                        }
+                    }
+                }
             }
         } catch (error) {
             console.log('Error processing comment:', error);
@@ -400,7 +434,6 @@ async function importData(comments) {
         console.log('----------------------------------------');
     }
 
-    // Save the importIdMap to a file
     if (process.env.PHILOMENA_IMPORT_ID_MAP) {
         try {
             await writeFileSync(process.env.PHILOMENA_IMPORT_ID_MAP, JSON.stringify(importIdMap, null, 2));
@@ -410,10 +443,9 @@ async function importData(comments) {
         }
     }
 
-    //store user_id's for statistics
     console.log('Adjusting user statistics');
-
     console.log('Adjusting image comments count...');
+
     let totalProcessed = 0;
     let imageBatch = [];
     startTime = Date.now();
@@ -562,27 +594,6 @@ async function csv2json(file, headings) {
     console.log(`Parsing CSV file: ${file}`);
     try {
         let data = readFileSync(file, 'utf8');
-        // const lines = data.split('\n');
-
-        // Filter out lines with an odd number of double quotes greater than 3
-        // const filteredLines = lines.filter(line => {
-        //     const columns = line.split(',');
-        //     let quoteCount = 0;
-        //     // for (const column of columns) {
-        //     //     quoteCount += column.split('"').length - 1;
-        //     // }
-        //     // if (quoteCount % 2 !== 0) {
-        //     //     if (!line.endsWith('"') || line.endsWith(',"')) {
-        //     //         return true;
-        //     //     }
-        //     //     console.log('REMOVED LINE: ', line);
-        //     //     return false;
-        //     // }
-        //     return true;
-        // });
-
-        // data = filteredLines.join('\n');
-
         return await parseCSV(data, headings);
     } catch (error) {
         console.log('Error filtering CSV data:', error);
@@ -628,7 +639,6 @@ async function parseCSV(records, headings, tries = {
             const lines = records.split('\n');
             if (lineNumber > 0 && lineNumber <= lines.length) {
                 console.error(`REMOVED LINE:  ${lines[lineNumber - 1]}`);
-
                 lines.splice(lineNumber - 1, 1);
                 records = lines.join('\n');
 
@@ -641,7 +651,6 @@ async function parseCSV(records, headings, tries = {
                     }
                     return await parseCSV(records, headings, tries);
                 }
-
                 console.error(`Error parsing CSV:`, error);
                 process.exit(1);
             }
@@ -676,7 +685,7 @@ async function testIndex(name) {
                 process.exit(1);
             } else if (index.health === 'yellow') {
                 console.warn(`!!WARNING!! Index '${name}' health is YELLOW health. possibly indicating a replica issue. (continue at your own risk - 10 second delay)`);
-                await delay(10000);
+                await delay(1000);
             } else {
                 console.log(`Index '${name}' found in OpenSearch`);
             }
@@ -710,8 +719,6 @@ console.log = function () {
         }
         return arg.toString();
     });
-    // args.unshift(new Date().toISOString());
-
     processingLog += args.join(' ') + '\n';
 }
 
@@ -727,19 +734,20 @@ console.error = function () {
         }
         return arg.toString();
     });
-    // args.unshift(new Date().toISOString());
-
     processingLog += args.join(' ') + '\n';
 }
 
-// capture process exit to handle cleanup
 process.on('exit', (code) => {
     console.log(`Process exited with code ${code}`);
-
     database.end();
-
     openSearchClient.close();
-
-    // save the processing log to a file
     writeFileSync("processing.log", processingLog);
 });
+
+function getAnonymousHash(parent_id, fingerprint) {
+    let salt = process.env.ANONYMOUS_NAME_SALT;
+
+    const id = String(parent_id) + String(fingerprint);
+    const key = crypto.pbkdf2Sync(id, salt, 100, 2, 'sha256');
+    return key.toString('hex').padStart(4, '0');
+}
